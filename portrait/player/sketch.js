@@ -4,12 +4,16 @@ frameNum = 25;
 images = [];
 dusterImg = null;
 isTickling = false;
+sneezePlaying = false;
+
+frame = 16;
+fpsRatio = 4;
+framesOnNose = 0;
+postSneezeTime = 0;
 
 function preload() {
-    // change the directory or filename prefix as needed
     for (i = 0; i < frameNum; i++) {
         fn = "data/frame" + (i + 1) + ".png";
-        print(fn);
         images.push(loadImage(fn));
     }
 
@@ -19,6 +23,7 @@ function preload() {
 function setup() {
     dusterImg.resize(64, 64);
     createCanvas(256, 256);
+    ps = new DustParticleSystem(createVector(width / 2, 50));
 
     cursor("grabbing");
 }
@@ -26,18 +31,52 @@ function setup() {
 function draw() {
     background(255);
 
-    mouseSpeed = sqrt((mouseX - pmouseX) ** 2 + (mouseY - pmouseY) ** 2);
+    mouseSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
+    isTickling = dusterOnNose();
 
-    isTickling = checkTickling(mouseSpeed);
-    if (isTickling) {
-        image(images[3], 0, 0);
+    if (isTickling || sneezePlaying) {
+        if ((framesOnNose > 60 && mouseSpeed > 10) || sneezePlaying) {
+            // lock sneeze animation until complete
+            sneezePlaying = true;
+            if (frame < int(images.length * fpsRatio)) {
+                // play sneeze animation at slower fps
+                slowedFrame = int(frame / fpsRatio);
+                image(images[slowedFrame], 0, 0);
+                frame++;
+            } else {
+                // reset state
+                frame = 16;
+                framesOnNose = 0;
+                sneezePlaying = false;
+                image(images[0], 0, 0);
+            }
+        } else {
+            // show pre-sneeze frame
+            framesOnNose++;
+            image(images[3], 0, 0);
+        }
     } else {
-        image(images[0], 0, 0);
+        framesOnNose = 0;
+        // base state
+        if (frameCount % 120 < 112) {
+            image(images[1], 0, 0);
+        } else {
+            image(images[2], 0, 0);
+        }
     }
 
-    // debugPanel({ i, mouseSpeed, isTickling });
+    image(dusterImg, mouseX - dusterImg.width + 16, mouseY - 16);
 
-    image(dusterImg, mouseX - dusterImg.width, mouseY);
+    ps.origin.set(
+        mouseX - dusterImg.width + 28,
+        mouseY + dusterImg.height - 28,
+        0
+    );
+
+    if (frameCount % 4 == 0) {
+        ps.newParticle();
+    }
+    ps.execute();
 }
 
 function debugPanel(vars) {
@@ -48,11 +87,14 @@ function debugPanel(vars) {
     }
 }
 
-function checkTickling(mouseSpeed) {
+function dusterOnNose() {
     // Calculate the distance between the tip (bottom left) of the duster and the nose
-    dusterTipPos = [mouseX - dusterImg.width, mouseY + dusterImg.height];
+    dusterTipPos = [
+        mouseX - dusterImg.width + 16,
+        mouseY + dusterImg.height - 16,
+    ];
     nosePos = [128, 128];
-    tolerance = 32;
+    tolerance = 48;
     distance = dist(dusterTipPos[0], dusterTipPos[1], nosePos[0], nosePos[1]);
 
     // Debug circles
@@ -67,6 +109,3 @@ function checkTickling(mouseSpeed) {
     }
     return false;
 }
-
-// micro-reviews due 1pm sunday before seminars
-// coding exercise demo
