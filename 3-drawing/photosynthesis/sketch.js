@@ -12,10 +12,20 @@ let p = {
   agentNumMin: 1,
   agentNumMax: 500,
 
+  // PLANTSc
+  plantNum: 5,
+  minPlantGrowSpeed: 1,
+  maxPlantGrowSpeed: 2,
+
   // colour of agents
   baseHue: 0,
   baseHueMin: 0,
   baseHueMax: 360,
+
+  // stroke width
+  weight: 2,
+  weightMin: 1,
+  weightMax: 5,
 
   // controls if agents interact with each other
   // which creates other interesting effects
@@ -90,7 +100,7 @@ function createAgents() {
   agents = [];
 
   // create an Agent object and place it at centre of each tile
-  for (i = 0; i < p.agentNum; i++) agents.push(new Agent());
+  for (i = 0; i < p.plantNum; i++) agents.push(new Agent());
 }
 
 function keyPressed() {
