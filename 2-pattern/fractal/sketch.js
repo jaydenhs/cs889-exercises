@@ -1,41 +1,36 @@
-let angle;
-let angleSlider;
 let startWeight = 11;
 let agents = [];
-let numAgents = 0;
-
-// parameters
-let p = {
-  numBranches: 3,
-};
+let frameCounter = 0;
 
 function setup() {
   createCanvas(600, 600);
 }
 
 function draw() {
-  background(0);
+  background("#a1d0fc");
   fill(255);
-  text("Fractal branches: " + p.numBranches, 10, 20);
-  agents.forEach((a) => a.update());
-  agents.forEach((a) => a.draw());
+  agents.forEach((a) => {
+    a.update();
+    if (a.alpha <= 0) {
+      // print("Despawned agent :", agents.indexOf(a));
+      agents.splice(agents.indexOf(a), 1);
+    }
+    a.draw();
+  });
 }
 
 function mouseClicked() {
   createAgent();
 }
 
-function mouseWheel(event) {
-  if (event.delta > 0 && p.numBranches < 10) {
-    p.numBranches++;
-  } else if (event.delta < 0 && p.numBranches > 3) {
-    p.numBranches--;
+function mouseDragged() {
+  if (frameCounter % 5 === 0) {
+    createAgent();
   }
-  print("numBranches: " + p.numBranches);
+  frameCounter++;
 }
 
 function createAgent() {
   // resizeCanvas(windowWidth, windowHeight);
   agents.push(new Agent(mouseX, mouseY));
-  numAgents++;
 }
