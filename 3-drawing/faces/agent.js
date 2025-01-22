@@ -6,15 +6,12 @@ class Agent {
     this.hx = x;
     this.hy = y;
 
-    this.dur = 120;
-    this.reset();
+    this.pause = 60;
+    this.colors = sourceImages.map((img) => img.get(x, y));
 
-    alpha = 100;
-    this.color;
-    this.startColor = sourceImages[0].get(x / p.imageSize, y / p.imageSize);
-    this.startColor[3] = alpha;
-    this.endColor = sourceImages[1].get(x / p.imageSize, y / p.imageSize);
-    this.endColor[3] = alpha;
+    this.active = 0;
+
+    this.reset();
   }
 
   update() {
@@ -23,28 +20,19 @@ class Agent {
     this.lastX = this.x;
     this.lastY = this.y;
 
-    this.color = lerpColor(
-      this.startColor,
-      this.endColor,
-      this.framesActive / this.dur
-    );
+    let t = this.framesActive / this.dur;
+    let progress = easeInOut(t);
+    this.color = lerpColor(this.startColor, this.endColor, progress);
 
-    if (this.framesActive <= this.dur / 2) {
-      this.step += 0.01;
-      this.direction += 0.05;
-      this.x += this.step * cos(this.direction);
-      this.y += this.step * sin(this.direction);
-    } else if (this.framesActive <= this.dur) {
-      this.step -= 0.01;
-      this.direction -= 0.05;
-      this.x -= this.step * cos(this.direction);
-      this.y -= this.step * sin(this.direction);
-    } else {
-      // this.x = this.hx;
-      // this.y = this.hy;
-      this.framesActive = 0;
+    if (this.framesActive <= this.dur) {
+      let angle = this.startAngle + TWO_PI * progress;
+      this.x =
+        this.hx + this.radius * cos(angle) - this.radius * cos(this.startAngle);
+      this.y =
+        this.hy + this.radius * sin(angle) - this.radius * sin(this.startAngle);
+    } else if (this.framesActive > this.dur + this.pause) {
       this.updateColors();
-      // this.step = 0;
+      this.reset();
     }
   }
 
@@ -64,8 +52,20 @@ class Agent {
   }
 
   reset() {
-    this.direction = random(TWO_PI);
-    this.step = 0;
+    this.dur = p.duration;
+    this.radius = random(10, 150);
+    this.startAngle = random(TWO_PI);
     this.framesActive = 0;
+
+    this.startColor = this.colors[this.active];
+    this.endColor = this.colors[(this.active + 1) % this.colors.length];
+    this.startColor[3] = p.alpha;
+    this.endColor[3] = p.alpha;
+
+    this.active = (this.active + 1) % this.colors.length;
   }
+}
+
+function easeInOut(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
