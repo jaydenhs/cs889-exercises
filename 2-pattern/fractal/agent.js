@@ -6,7 +6,7 @@ class Agent {
     this.numBranches = getRandomInt(3, 4) * 2;
     this.rotationIncrement = random(0.01, 0.03);
     this.rotationDirection = random(0, 1) > 0.5 ? 1 : -1;
-    this.scale = random(1, 2);
+    this.scale = random(2, 4);
     this.alpha = 255;
     this.alphaDecrement = random(1, 2);
     this.weightIn = random(10, 20);

@@ -3,7 +3,7 @@ let agents = [];
 let frameCounter = 0;
 
 function setup() {
-  createCanvas(600, 600);
+  createCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
@@ -11,7 +11,7 @@ function draw() {
   fill(255);
   agents.forEach((a) => {
     a.update();
-    if (a.alpha <= 0) {
+    if (a.alpha <= 0 || a.y > height + 50) {
       // print("Despawned agent :", agents.indexOf(a));
       agents.splice(agents.indexOf(a), 1);
     }
