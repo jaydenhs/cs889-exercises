@@ -1,5 +1,10 @@
 // Proxies Flickr photo search so the API key stays server-side (FLICKR_API_KEY env var).
 module.exports = async (req, res) => {
+  // browsers label every request with where it came from; only accept our own pages
+  if (req.headers["sec-fetch-site"] !== "same-origin") {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
   const { per_page = "25", min_upload_date, max_upload_date } = req.query;
   const params = new URLSearchParams({
     method: "flickr.photos.search",
