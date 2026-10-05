@@ -20,10 +20,44 @@ function preload() {
     dusterImg = loadImage("data/feather-duster.png");
 }
 
+// The sketch is laid out in a 256x256 "picture space". The canvas is a square
+// that fits the window, and the mouse is mapped back into picture space.
+const PIC = 256;
+const DUSTER = 64; // duster size in picture space (the PNG itself is higher resolution)
+let k = 1; // window px per picture px
+let ox = 0;
+let oy = 0;
+let mx = 0;
+let my = 0;
+let pmx = 0;
+let pmy = 0;
+
+function canvasSize() {
+    return floor(min(min(windowWidth, windowHeight) * 0.9, 800));
+}
+
+function fitPicture() {
+    k = width / PIC;
+}
+
+function windowResized() {
+    resizeCanvas(canvasSize(), canvasSize());
+    fitPicture();
+}
+
 function setup() {
-    dusterImg.resize(64, 64);
-    createCanvas(256, 256);
-    ps = new DustParticleSystem(createVector(width / 2, 50));
+    createCanvas(canvasSize(), canvasSize());
+    fitPicture();
+
+    // the duster PNG has a stray dot at the bottom left; erase it
+    cleanDuster = createGraphics(dusterImg.width, dusterImg.height);
+    cleanDuster.pixelDensity(1);
+    cleanDuster.image(dusterImg, 0, 0);
+    cleanDuster.erase();
+    cleanDuster.rect(0, 380, 60, dusterImg.height - 380);
+    cleanDuster.noErase();
+
+    ps = new DustParticleSystem(createVector(PIC / 2, 50));
 
     cursor("grabbing");
 }
@@ -31,7 +65,16 @@ function setup() {
 function draw() {
     background(255);
 
-    mouseSpeed = dist(mouseX, mouseY, pmouseX, pmouseY);
+    mx = (mouseX - ox) / k;
+    my = (mouseY - oy) / k;
+    pmx = (pmouseX - ox) / k;
+    pmy = (pmouseY - oy) / k;
+
+    push();
+    translate(ox, oy);
+    scale(k);
+
+    mouseSpeed = dist(mx, my, pmx, pmy);
     isTickling = dusterOnNose();
 
     if (isTickling || sneezePlaying) {
@@ -65,18 +108,15 @@ function draw() {
         }
     }
 
-    image(dusterImg, mouseX - dusterImg.width + 16, mouseY - 16);
+    image(cleanDuster, mx - DUSTER + 16, my - 16, DUSTER, DUSTER);
 
-    ps.origin.set(
-        mouseX - dusterImg.width + 28,
-        mouseY + dusterImg.height - 28,
-        0
-    );
+    ps.origin.set(mx - DUSTER + 28, my + DUSTER - 28, 0);
 
     if (frameCount % 4 == 0) {
         ps.newParticle();
     }
     ps.execute();
+    pop();
 }
 
 function debugPanel(vars) {
@@ -90,8 +130,8 @@ function debugPanel(vars) {
 function dusterOnNose() {
     // Calculate the distance between the tip (bottom left) of the duster and the nose
     dusterTipPos = [
-        mouseX - dusterImg.width + 16,
-        mouseY + dusterImg.height - 16,
+        mx - DUSTER + 16,
+        my + DUSTER - 16,
     ];
     nosePos = [128, 128];
     tolerance = 48;

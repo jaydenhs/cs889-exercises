@@ -38,3 +38,33 @@ html {
   color: #666;
   line-height: 1.5;
 }
+
+#spinner {
+  position: fixed;
+  left: 50%;
+  top: calc(50% + 48px);
+  width: 36px;
+  height: 36px;
+  margin-left: -18px;
+  border: 4px solid rgba(0, 0, 0, 0.15);
+  border-top-color: #222;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+#searched {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(50% + 112px);
+  text-align: center;
+  font-family: monospace;
+  font-size: 16px;
+  color: #555;
+}

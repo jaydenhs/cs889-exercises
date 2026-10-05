@@ -1,2 +1,5 @@
 _private
 node_modules
+.env.local
+.vercel
+.DS_Store

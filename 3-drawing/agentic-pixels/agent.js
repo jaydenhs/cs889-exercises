@@ -7,7 +7,7 @@ class Agent {
     this.hy = y;
 
     this.pause = 60;
-    this.colors = sourceImages.map((img) => img.get(x, y));
+    this.colors = coverImages.map((img) => img.get(x, y));
 
     this.active = 0;
 

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interactive Art Sketches</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500&family=Young+Serif&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #141a3d;
+        --bg-image: radial-gradient(rgba(255, 72, 176, .22) 1.6px, transparent 1.7px);
+        --surface: #1b2250;
+        --card: #1b2250;
+        --border: #fdf0d2;
+        --text: #fdf0d2;
+        --body-text: #e3d6b6;
+        --muted: #a9a3b8;
+        --accent: #ffe14a;
+        --display: "Young Serif", Georgia, serif;
+        --font: "Work Sans", system-ui, sans-serif;
+        --radius: 0px;
+        --card-shadow: 6px 6px 0 #ff48b0;
+        --card-hover-shadow: 10px 10px 0 #ff48b0;
+        --card-hover-border: #fdf0d2;
+        --thumb-bg: #ff48b0;
+        --title-size: 1.25rem;
+        --h1-size: 1.9rem;
+        --h1-weight: 400;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { margin: 0; display: flex; font-family: var(--font); background: var(--bg) var(--bg-image); background-size: 14px 14px, auto; color: var(--text); -webkit-font-smoothing: antialiased; transition: background-color .3s; }
+      ::selection { background: var(--accent); color: var(--bg); }
+
+      /* persistent left column */
+      aside { flex: 0 0 340px; height: 100%; overflow-y: auto; padding: 2.5rem 2rem 1.5rem; background: var(--surface); border-right: 1px solid var(--border); line-height: 1.6; display: flex; flex-direction: column; }
+      aside h1 { font-family: var(--display); font-size: var(--h1-size); font-weight: var(--h1-weight); letter-spacing: -0.02em; line-height: 1.12; margin: 0 0 1rem; }
+      aside h2 { font-family: var(--display); font-size: .72rem; font-weight: 500; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 1.75rem 0 .6rem; }
+      aside p { margin: 0 0 .85rem; font-size: .95rem; color: var(--body-text); }
+      aside a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; transition: opacity .15s; }
+      aside a:hover { opacity: .7; }
+      aside ul { margin: 0; padding-left: 1.1rem; font-size: .95rem; color: var(--body-text); }
+      aside li { margin-bottom: .45rem; }
+      aside li::marker { color: var(--accent); }
+      aside b { color: var(--text); font-weight: 600; }
+      #back { display: inline-block; margin-bottom: 1.5rem; padding: .3rem .75rem; font-size: .8rem; color: var(--muted) !important; border: 1px solid var(--border) !important; border-radius: 999px; }
+      #demo-img { width: 100%; max-width: 260px; margin: 1rem 0 0; padding: .75rem; background: #fff; border-radius: 12px; }
+      #demo-note { margin-top: 1.5rem; padding: .75rem 1rem; font-size: .85rem; color: var(--muted); border-left: 3px solid var(--accent); background: rgba(127, 127, 127, 0.1); border-radius: 0 8px 8px 0; }
+      #demo-note:empty { display: none; }
+      #demo-title { margin-bottom: .75rem; }
+
+      main { position: relative; flex: 1; min-width: 0; height: 100%; overflow-y: auto; }
+      #grid-view { padding: 3.5rem 2.5rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.75rem; max-width: 880px; margin: 0 auto; }
+      a.card { position: relative; display: block; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: inherit; box-shadow: var(--card-shadow); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+      a.card:hover { transform: translateY(-4px); border-color: var(--card-hover-border); box-shadow: var(--card-hover-shadow); }
+      .thumb { overflow: hidden; border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; }
+      .card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: var(--thumb-bg); transition: transform .4s ease, filter .3s; }
+      a.card:hover img { transform: scale(1.04); }
+      .meta { padding: 1.1rem 1.4rem 1.3rem; display: flex; align-items: center; justify-content: space-between; }
+      .title { font-family: var(--title-font); font-size: var(--title-size); font-weight: 500; letter-spacing: -0.01em; line-height: 1.1; }
+      .meta::after { content: "→"; color: var(--muted); transition: transform .2s, color .2s; }
+      a.card:hover .meta::after { color: var(--accent); transform: translateX(4px); }
+      #frame { display: none; width: 100%; height: 100%; border: 0; background: var(--bg); }
+
+      /* two-ink print look: duotone thumbs, misregistered titles */
+      aside { border-right: 2px solid var(--border); }
+      aside h1 { text-shadow: 2px 2px 0 #ff48b0, -1px -1px 0 #3d9bff; }
+      a.card { border: 2px solid var(--border); }
+      .thumb { background: #ff48b0; border-bottom: 2px solid var(--border); }
+      .card img { filter: grayscale(1) contrast(1.15); mix-blend-mode: multiply; }
+      a.card:hover img { filter: none; mix-blend-mode: normal; }
+      .title { text-shadow: 1.5px 1.5px 0 #3d9bff; }
+      a.card:hover { transform: translate(-3px, -3px); }
+      #back { border-radius: 0; border: 2px solid var(--border) !important; }
+
+      /* covers the demo pane until the demo's canvas is up, so its white loading page never shows */
+      #loader { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-family: var(--display); font-size: 1.6rem; color: var(--text); text-shadow: 2px 2px 0 #ff48b0, -1px -1px 0 #3d9bff; background: var(--bg) var(--bg-image); background-size: 14px 14px; opacity: 1; transition: opacity .35s ease; pointer-events: none; }
+      body.demo #loader { display: flex; }
+      #loader.done { opacity: 0; }
+      body.demo #grid-view, body.demo #home-only { display: none; }
+      body.demo #frame { display: block; }
+      body:not(.demo) #demo-only { display: none; }
+
+      @media (max-width: 800px) {
+        body { display: block; }
+        aside { height: auto; border-right: 0 !important; border-bottom: 1px solid var(--border); padding: 1.75rem 1.25rem; }
+        main { height: auto; }
+        #frame { height: 80vh; }
+        #grid-view { padding: 1.5rem 1rem; }
+      }
+      @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <div id="home-only">
+        <h1>Interactive Art Sketches</h1>
+        <p>
+          A set of interactive art demos built with p5.js to learn creative
+          coding as part of CS 889, taught by
+          <a href="https://www.nonsequitoria.com/" target="_blank" rel="noopener">Daniel Vogel</a>
+          at the University of Waterloo.
+        </p>
+        <p>Pick a demo to try it.</p>
+      </div>
+      <div id="demo-only">
+        <a id="back" href="#">← All demos</a>
+        <h1 id="demo-title"></h1>
+        <p id="demo-desc"></p>
+        <h2>How to interact</h2>
+        <ul id="demo-how"></ul>
+        <img id="demo-img" alt="" />
+        <p id="demo-note"></p>
+      </div>
+    </aside>
+
+    <main>
+      <div id="grid-view">
+        <div class="grid" id="grid"></div>
+      </div>
+      <iframe id="frame" title="Demo" allow="camera; microphone; autoplay"></iframe>
+      <div id="loader">loading…</div>
+    </main>
+
+    <script>
+      const demos = {
+        "ghost-in-the-machine": {
+          title: "Ghost in the Machine",
+          path: "7-sound/ghost-in-the-machine/",
+          how: [
+            "Allow camera access and hold up a hand or two.",
+            "Move left and right to change pitch, and up and down to change volume.",
+            "Move your hand toward the camera for short, rapid tones, or away for long, held ones.",
+            "Turn your sound on. The green digits show the current volume in binary.",
+          ],
+          desc: "Your hands become a theremin-like instrument, and the machine shows its own internal representation of the sound as binary.",
+        },
+        "agentic-pixels": {
+          title: "Agentic Pixels",
+          path: "3-drawing/agentic-pixels/",
+          how: [
+            "Just watch: it starts painting on its own.",
+            "Click the gear in the top right (or press <b>H</b>) to show settings: tile size, brush size, transition duration and brush opacity.",
+          ],
+          desc: "Every tile of a pixel grid is a small agent that paints a stroke, drifting in a loop while blending between photos.",
+        },
+        "let-your-hands-make-music": {
+          title: "Let Your Hands Make Music",
+          path: "6-tracking/let-your-hands-make-music/",
+          how: [
+            "Allow camera access and hold up your hand.",
+            "Point your <b>right index finger</b> at the camera to start on beat 1. Then follow the conducting pattern below.",
+            "Conduct faster or slower and the music follows your tempo.",
+          ],
+          img: "6-tracking/let-your-hands-make-music/conducting-pattern.png",
+          desc: "Hand tracking turns gesture into a musical instrument: your beat pattern sets the playback speed of a symphony.",
+        },
+        inartural: {
+          title: "Inartural",
+          path: "4-data/inartural/",
+          how: [
+            "Nothing to click. Wait a moment while it searches.",
+          ],
+          desc: "A gallery that only hangs photos from Flickr that nobody has ever viewed. It treats live data as an art source and asks what a first and only audience means for an image.",
+        },
+        "colour-of-life": {
+          title: "Colour of Life",
+          path: "8-distributed/colour-of-life/",
+          how: [
+            "Click or drag on the grid to paint living cells. Every click is a new colour.",
+            "Scroll to switch the brush between 1×1, 3×3 and 5×5.",
+            "Where colours meet, a newborn cell takes the colour of most of its neighbours, so they compete.",
+            "Watch Conway's rules take over: cells die when lonely or crowded and are born where three neighbours meet.",
+            "The grid wraps around, so gliders that leave one edge come back on the other.",
+          ],
+          desc: "Conway's Game of Life on a grid that fills the screen and never stops running. You only seed it. The patterns that grow, move and collide are up to the rules.",
+          note: "This used to be multiplayer: everyone connected shared one live grid, each with their own colour, and colours competed for newborn cells. It's single-player here because the shared server isn't hosted.",
+        },
+        achoo: {
+          title: "Achoo!",
+          path: "1-portrait/achoo/",
+          how: [
+            "Move your mouse to wave the feather duster around the portrait.",
+            "🥚 Easter egg: hold the duster under the nose for a moment, then wiggle it fast.",
+          ],
+          desc: "An animated portrait that reacts to being tickled. The face is a set of photographed frames, and your cursor decides which one plays.",
+        },
+      };
+
+      const grid = document.getElementById("grid");
+      for (const [id, d] of Object.entries(demos)) {
+        const slug = d.thumb || d.path.split("/")[1];
+        grid.insertAdjacentHTML("beforeend",
+          `<a class="card" href="#${id}">
+             <div class="thumb"><img src="thumbs/${slug}.png" alt="" loading="lazy" onerror="this.onerror=null;this.src='thumbs/default.svg'" /></div>
+             <div class="meta"><div class="title">${d.title}</div></div>
+           </a>`);
+      }
+
+      const frame = document.getElementById("frame");
+      // use location.replace so iframe loads don't add browser history entries
+      let current = null;
+      // wait for the iframe's page to load, then for p5's own "Loading..." screen to go and a canvas to exist
+      const loader = document.getElementById("loader");
+      let pageLoaded = false;
+      let waiter = null;
+      function showLoader() {
+        pageLoaded = false;
+        loader.classList.remove("done");
+        clearInterval(waiter);
+        const started = Date.now();
+        waiter = setInterval(() => {
+          let ready = false;
+          try {
+            const doc = frame.contentDocument;
+            const p5Loading = doc.getElementById("p5_loading");
+            ready = pageLoaded && doc.querySelector("canvas") && !(p5Loading && p5Loading.offsetParent);
+          } catch (e) {}
+          if (ready || Date.now() - started > 15000) {
+            clearInterval(waiter);
+            loader.classList.add("done");
+          }
+        }, 100);
+      }
+      frame.addEventListener("load", () => { if (current) pageLoaded = true; });
+
+      function route() {
+        const d = demos[location.hash.slice(1)];
+        document.body.classList.toggle("demo", !!d);
+        if (d) {
+          document.getElementById("demo-title").textContent = d.title;
+          document.getElementById("demo-how").innerHTML = d.how.map((h) => `<li>${h}</li>`).join("");
+          const img = document.getElementById("demo-img");
+          img.style.display = d.img ? "block" : "none";
+          if (d.img) { img.src = d.img; img.alt = `${d.title} instructions`; }
+          document.getElementById("demo-note").textContent = d.note || "";
+          document.getElementById("demo-desc").textContent = d.desc;
+          document.title = `${d.title} · Interactive Art Sketches`;
+          if (current !== d.path) {
+            showLoader();
+            frame.contentWindow.location.replace(d.path);
+          }
+          current = d.path;
+        } else {
+          document.title = "Interactive Art Sketches";
+          clearInterval(waiter);
+          if (current) frame.contentWindow.location.replace("about:blank"); // stop camera/audio
+          current = null;
+        }
+      }
+      window.addEventListener("hashchange", route);
+      route();
+    </script>
+  </body>
+</html>

@@ -18,6 +18,11 @@ let predictions = [];
 // video capture
 let video;
 
+// Overall output level. 1 = unchanged. Each hand starts a new oscillator every
+// frame and lets it ring for up to 700 ms, so dozens overlap and add up; this
+// scales the whole mix back.
+const MASTER_VOLUME = 0.1;
+
 function preload() {
   // initialize the model
   model = ml5.handPose(
@@ -35,6 +40,8 @@ function preload() {
 }
 
 function setup() {
+  outputVolume(MASTER_VOLUME);
+
   createCanvas(windowWidth, windowHeight);
 
   // create an HTML video capture object
@@ -57,6 +64,18 @@ function setup() {
 function draw() {
   background("black");
   // image(video, 0, 0, width, height);
+
+  // both rows are always on screen; a row is dim until its hand is in frame
+  ["Left", "Right"].forEach((side) => {
+    if (!predictions.some((hand) => hand.handedness === side)) {
+      fill(0, 255, 0, 60);
+      textFont("monospace");
+      noStroke();
+      textSize(96);
+      textAlign(CENTER, CENTER);
+      text("0".repeat(14), width / 2, height / 2 + (side === "Left" ? -48 : 48));
+    }
+  });
 
   // draw different parts of the prediction
   predictions.forEach((hand, i) => {
@@ -120,7 +139,7 @@ function drawSkeleton(hand, i) {
   text(ampBinary, width / 2, height / 2 + offset);
 
   // stop the oscillator after 300 ms
-  let duration = map(hand.keypoints3D[0].z, -0.015, 0.02, 10, 700, true);
+  let duration = map(hand.keypoints3D[0].z, -0.015, 0.02, 700, 10, true);
   print(hand.keypoints3D[0].z);
   // print(duration);
   setTimeout(() => {
@@ -140,13 +159,6 @@ function drawSkeleton(hand, i) {
 
   // // trigger the envelope
   // env.play(osc);
-}
-
-function keyPressed() {
-  // dump the predictions to the console
-  if (key == " ") {
-    console.log(predictions);
-  }
 }
 
 // global callback from the settings GUI

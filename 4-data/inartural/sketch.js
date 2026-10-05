@@ -3,6 +3,7 @@ let imgOwner;
 let imgDescription;
 let bgImage;
 
+let photosSearched = 0;
 let maxViewCount = 0;
 let perPage = 500;
 let requestBatchSize = 25;
@@ -11,10 +12,6 @@ let maxDescriptionWords = 20;
 
 function preload() {
   bgImage = loadImage("gallery-bg.webp");
-
-  loadJSON("../../_private/auth.json", (auth) => {
-    API_KEY = auth.FLICKR_API_KEY;
-  });
 }
 
 function setup() {
@@ -112,11 +109,13 @@ async function loadMultipleImagesFromFlickr() {
 function makeFlickrRequest() {
   return new Promise((resolve, reject) => {
     let { minUploadDate, maxUploadDate } = getRandomMonthRange();
-    let url = `https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=${API_KEY}&format=json&nojsoncallback=1&per_page=${perPage}&text=photography&min_upload_date=${minUploadDate}&max_upload_date=${maxUploadDate}&extras=views,owner_name,description&safe_search=1&content_types=0`;
+    let url = `/api/flickr?per_page=${perPage}&min_upload_date=${minUploadDate}&max_upload_date=${maxUploadDate}`;
 
     loadJSON(url, (data) => {
       // Only process data if no zero-view image has been found yet
       if (!img) {
+        photosSearched += data.photos.photo.length;
+        document.getElementById("searched").textContent = `${photosSearched.toLocaleString()} photos searched`;
         gotData(data);
       }
 
@@ -178,6 +177,8 @@ function gotData(data) {
 
     loadImage(photoUrl, (loadedImg) => {
       img = loadedImg;
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("searched").style.display = "none";
       redraw();
     });
   } else {

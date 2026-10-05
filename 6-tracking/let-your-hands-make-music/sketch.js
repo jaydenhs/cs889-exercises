@@ -9,6 +9,10 @@ let p = {
   strokeWidthMax: 40,
 };
 
+// size of the video the model sees; hand keypoints are in these coordinates
+const VIDEO_W = 640;
+const VIDEO_H = 480;
+
 // the HandPose model
 // using https://docs.ml5js.org/#/reference/handpose
 let model;
@@ -24,12 +28,22 @@ let pBeat = 0;
 let lastBeatFrame = 0;
 let originalBPM = 150;
 let bpm = originalBPM;
-const previousBPMs = Array(3).fill(bpm); // Store the last N BPMs for smoothing
+const previousBPMs = Array(2).fill(bpm); // Store the last N BPMs for smoothing
+
+// keep playback within the range where the browser's time-stretch sounds OK
+const minRate = 0.6;
+const maxRate = 1.5;
 let smoothedBPM = bpm;
+
+// Fade the music out when no hand has been seen for a while, and back in when one returns
+const handLostFrameLimit = 45; // about 0.75s at 60 fps
+const fadeDuration = 1.5; // seconds
+let handLostFrames = 0;
+let fadedOut = false;
 
 // Audio
 let symphony;
-let clicked = false;
+let bgImg = null;
 let audioContext;
 let source;
 let buffer;
@@ -54,17 +68,19 @@ function preload() {
   // Create an audio element
   audio = new Audio("symphony-iv.mp3");
   audio.preservesPitch = true; // Ensure pitch correction when speed changes
+
+  // optional background; falls back to plain colour if the file is missing
+  bgImg = loadImage("orchestra.png", undefined, () => (bgImg = null));
 }
 
 function setup() {
-  createCanvas(640, 480);
+  createCanvas(windowWidth, windowHeight);
 
   // create an HTML video capture object
   video = createCapture(VIDEO, { flipped: true });
-  video.size(width, height);
+  video.size(VIDEO_W, VIDEO_H);
   video.hide();
 
-  createSettingsGui(p, { callback: paramChanged, load: false });
   model.detectStart(video, (results) => {
     predictions = results;
   });
@@ -72,8 +88,14 @@ function setup() {
 
 function draw() {
   background("#f5f5f5");
+  if (bgImg) drawCover(bgImg);
 
-  if (clicked) {
+  {
+    // fit the video space into the window, centred, so hands are never cropped
+    const s = min(width / VIDEO_W, height / VIDEO_H);
+    push();
+    translate((width - VIDEO_W * s) / 2, (height - VIDEO_H * s) / 2);
+    scale(s);
     // draw different parts of the prediction
     predictions.forEach((hand, i) => {
       // if (p.keyPoints) drawKeypoints(hand, i);
@@ -84,29 +106,29 @@ function draw() {
       }
     });
 
+    updateFade();
+
     if (pBeat !== beat) {
       calculateBPM();
       print(beat);
       pBeat = beat;
       previousBPMs.shift();
-      previousBPMs.push(bpm);
+      previousBPMs.push(constrain(bpm, originalBPM * minRate, originalBPM * maxRate));
       smoothedBPM =
         previousBPMs.reduce((a, b) => a + b, 0) / previousBPMs.length;
       gsap.to(audio, {
         playbackRate: smoothedBPM / originalBPM,
-        duration: 0.2,
+        duration: 0.15,
       });
     }
 
-    // debug info
-    debugInfo();
-    drawFps();
+    pop();
   }
 }
 
 // Draw lines between certain main keypoints
 function drawSkeleton(hand, i) {
-  const c = "Black";
+  const c = "gray";
   stroke(c);
   strokeWeight(p.strokeWidth);
   noFill();
@@ -185,11 +207,53 @@ function drawIndexFingerSkeleton(hand, i) {
   }
 }
 
+// scale and crop an image to fill the canvas
+function drawCover(img) {
+  const s = Math.max(width / img.width, height / img.height);
+  image(img, (width - img.width * s) / 2, (height - img.height * s) / 2, img.width * s, img.height * s);
+}
+
+function updateFade() {
+  if (predictions.length > 0) {
+    handLostFrames = 0;
+    if (fadedOut) fadeIn();
+  } else {
+    handLostFrames++;
+    if (handLostFrames === handLostFrameLimit && audio.playing) fadeOut();
+  }
+}
+
+function fadeOut() {
+  fadedOut = true;
+  gsap.killTweensOf(audio, "volume");
+  gsap.to(audio, {
+    volume: 0,
+    duration: fadeDuration,
+    onComplete: () => {
+      if (fadedOut) audio.pause();
+    },
+  });
+}
+
+// resume from where it paused
+function fadeIn() {
+  fadedOut = false;
+  gsap.killTweensOf(audio, "volume");
+  audio.play().catch(() => {});
+  gsap.to(audio, { volume: 1, duration: fadeDuration });
+}
+
 function startAudio() {
   if (!audio.playing) {
-    frameCount = 0;
-    audio.play();
-    audio.playing = true;
+    // browsers may block playback until the page has had a click/keypress;
+    // if so, retry on the next beat (or the first click)
+    audio
+      .play()
+      .then(() => {
+        frameCount = 0;
+        audio.playing = true;
+      })
+      .catch(() => {});
   }
 }
 
@@ -206,20 +270,15 @@ function calculateBPM() {
   lastBeatFrame = currentFrame;
 }
 
-function debugInfo() {
-  // Display the direction at the top right of the screen
-  fill("black");
-  noStroke();
-  textSize(16);
-  textAlign(RIGHT, TOP);
-  text(`Index Direction: ${direction}`, width - 10, 10);
-  text(`Beat: ${beat}`, width - 10, 30);
-  text(`BPM: ${bpm.toFixed(0)}`, width - 10, 50);
-  text(`Smoothed BPM: ${smoothedBPM.toFixed(0)}`, width - 10, 70);
+// a click unlocks audio if the browser blocked autoplay, without starting the music
+function mousePressed() {
+  if (!audio.playing) {
+    audio.play().then(() => audio.pause()).catch(() => {});
+  }
+}
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
 
-function mousePressed() {
-  clicked = true;
-}
 // global callback from the settings GUI
 function paramChanged(name) {}
