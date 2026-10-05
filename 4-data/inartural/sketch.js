@@ -10,6 +10,11 @@ let requestBatchSize = 25;
 
 let maxDescriptionWords = 20;
 
+// where the wall sits in gallery-bg.webp (fractions of its height): below the ceiling
+// shadow and above the floor. The frame is kept inside this band.
+const WALL_TOP = 159 / 857;
+const WALL_BOTTOM = 735 / 857;
+
 function preload() {
   bgImage = loadImage("gallery-bg.webp");
 }
@@ -43,42 +48,74 @@ function draw() {
     image(bgImage, -offsetX, -offsetY, newWidth, newHeight);
 
     if (img) {
-      let scaleFactor = 400 / max(img.width, img.height);
-      img.resize(img.width * scaleFactor, img.height * scaleFactor);
+      const compact = width < 600;
 
-      let imgX = (width - img.width) / 2;
-      let imgY = (height - img.height) / 2;
+      // the wall as drawn on screen (the background is cover-scaled and cropped)
+      const wallTop = -offsetY + WALL_TOP * newHeight;
+      const wallBottom = -offsetY + WALL_BOTTOM * newHeight;
+      const margin = 12;
+      // on narrow screens the placard goes under the frame, so leave it room on the wall
+      const placardRoom = compact ? 80 : 0;
+      // if the window crops part of the wall, stay inside what's visible
+      const areaTop = max(wallTop, 0) + margin;
+      const areaBottom = min(wallBottom, height) - margin - placardRoom;
+      const areaHeight = max(areaBottom - areaTop, 60);
+
+      // shrink everything (image, black frame, white frame) so the frame fits the wall and the width
+      const wr = img.width / max(img.width, img.height);
+      const hr = img.height / max(img.width, img.height);
+      const k = max(0.15, min(1, areaHeight / (400 * hr + 75), (width * 0.9) / (400 * wr + 75)));
+      const maxSide = 400 * k;
+      const tb = 75 * k; // black frame
+      const tw = 60 * k; // white frame
+
+      let scaleFactor = maxSide / max(img.width, img.height);
+      const dw = img.width * scaleFactor;
+      const dh = img.height * scaleFactor;
+
+      let imgX = (width - dw) / 2;
+      // centred on the wall (or on the part of it above the placard)
+      let imgY = (areaTop + areaBottom) / 2 - dh / 2;
 
       // Draw a black frame around the image
       fill(25);
       noStroke();
-      tb = 75;
-      rect(imgX - tb / 2, imgY - tb / 2, img.width + tb, img.height + tb);
+      rect(imgX - tb / 2, imgY - tb / 2, dw + tb, dh + tb);
 
       // Draw a white frame around the image
       fill(252);
-      tw = 60;
-      rect(imgX - tw / 2, imgY - tw / 2, img.width + tw, img.height + tw);
+      rect(imgX - tw / 2, imgY - tw / 2, dw + tw, dh + tw);
 
-      image(img, imgX, imgY);
+      image(img, imgX, imgY, dw, dh);
 
-      let imgRightEdge = imgX - tb / 2 + img.width + tb;
-      let percentage = (imgRightEdge / width) * 100;
-      document.getElementById("placard").style.left = `${percentage + 1}%`;
-
-      let imgBottomEdge = imgY - tb / 2 + img.height + tb;
-      percentage = (imgBottomEdge / height) * 100;
-      document.getElementById("placard").style.bottom = `${100 - percentage}%`;
-
-      document.getElementById("placard").style.visibility = "visible";
+      const placard = document.getElementById("placard");
+      const frameBottom = imgY - tb / 2 + dh + tb;
+      if (compact) {
+        // centred under the frame
+        placard.style.left = "50%";
+        placard.style.transform = "translateX(-50%)";
+        placard.style.top = `${frameBottom + 16}px`;
+        placard.style.bottom = "auto";
+      } else {
+        // beside the frame, bottom aligned
+        const imgRightEdge = imgX - tb / 2 + dw + tb;
+        placard.style.left = `${(imgRightEdge / width) * 100 + 1}%`;
+        placard.style.transform = "none";
+        placard.style.top = "auto";
+        placard.style.bottom = `${100 - (frameBottom / height) * 100}%`;
+      }
+      // on phones only the name is shown, so skip the placard if there is none
+      placard.style.visibility = compact && !imgOwner ? "hidden" : "visible";
     }
   } else {
     // Display a loading message
     background(225);
     fill(0);
     textAlign(CENTER, CENTER);
-    textSize(32);
-    text("you are the first person ever to see this", width / 2, height / 2);
+    textSize(constrain(width / 18, 18, 32));
+    rectMode(CENTER);
+    text("you are the first person ever to see this", width / 2, height / 2 - 40, width * 0.85, 120);
+    rectMode(CORNER);
   }
 
   noLoop();
@@ -96,9 +133,6 @@ async function loadMultipleImagesFromFlickr() {
 
     // If no zero-view image was found, retry the batch
     if (!img) {
-      console.log(
-        "No zero-view images found in this request batch. Retrying..."
-      );
       loadMultipleImagesFromFlickr();
     }
   } catch (error) {
@@ -181,10 +215,6 @@ function gotData(data) {
       document.getElementById("searched").style.display = "none";
       redraw();
     });
-  } else {
-    console.log(
-      `No images with less than ${maxViewCount} views found in these photos.`
-    );
   }
 }
 
@@ -212,4 +242,8 @@ function getRandomMonthRange() {
     minUploadDate: Math.floor(randomStartDate.getTime() / 1000),
     maxUploadDate: Math.floor(randomEndDate.getTime() / 1000),
   };
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }

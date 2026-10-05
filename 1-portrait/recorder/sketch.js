@@ -55,7 +55,6 @@ function draw() {
             renderFrame("#00ffff");
             if (frame >= images.length) {
                 isDownloading = false;
-                print("Downloaded");
             }
         } else {
             renderFrame("#0000ff");
@@ -65,28 +64,21 @@ function draw() {
 }
 
 function keyPressed() {
-    print(`${key} pressed`);
     if (key === "?") {
-        // print debug info
-        print(`capture size (${cam.width}, ${cam.height})`);
     } else if (key === "r") {
         // r to clear and record
-        print("Record");
         isDownloading = false;
         isRecording = true;
         images = [];
     } else if (isRecording && key == " ") {
         images.push(lastFrameImg);
-        print(" ", images.length);
     } else if (key === "p") {
         // p to playback loop
-        print("Playback");
         isDownloading = false;
         isRecording = false;
         frame = 0;
     } else if (key === "d") {
         // d to download
-        print("Downloading");
         isDownloading = true;
         isRecording = false;
         frame = 0;
@@ -98,7 +90,6 @@ function keyPressed() {
     } else if (isDownloading && key == " ") {
         // download the image
         images[frame].save("frame" + (downloadNum + 1), "png");
-        print(frame + 1 + " of " + images.length);
         frame++;
         downloadNum++;
     }

@@ -45,7 +45,6 @@
       aside h2 { font-family: var(--display); font-size: .72rem; font-weight: 500; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 1.75rem 0 .6rem; }
       aside p { margin: 0 0 .85rem; font-size: .95rem; color: var(--body-text); }
       aside a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; transition: opacity .15s; }
-      aside a:hover { opacity: .7; }
       aside ul { margin: 0; padding-left: 1.1rem; font-size: .95rem; color: var(--body-text); }
       aside li { margin-bottom: .45rem; }
       aside li::marker { color: var(--accent); }
@@ -60,14 +59,11 @@
       #grid-view { padding: 3.5rem 2.5rem; }
       .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.75rem; max-width: 880px; margin: 0 auto; }
       a.card { position: relative; display: block; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); text-decoration: none; color: inherit; box-shadow: var(--card-shadow); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
-      a.card:hover { transform: translateY(-4px); border-color: var(--card-hover-border); box-shadow: var(--card-hover-shadow); }
       .thumb { overflow: hidden; border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; }
       .card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: var(--thumb-bg); transition: transform .4s ease, filter .3s; }
-      a.card:hover img { transform: scale(1.04); }
       .meta { padding: 1.1rem 1.4rem 1.3rem; display: flex; align-items: center; justify-content: space-between; }
       .title { font-family: var(--title-font); font-size: var(--title-size); font-weight: 500; letter-spacing: -0.01em; line-height: 1.1; }
       .meta::after { content: "→"; color: var(--muted); transition: transform .2s, color .2s; }
-      a.card:hover .meta::after { color: var(--accent); transform: translateX(4px); }
       #frame { display: none; width: 100%; height: 100%; border: 0; background: var(--bg); }
 
       /* two-ink print look: duotone thumbs, misregistered titles */
@@ -76,9 +72,7 @@
       a.card { border: 2px solid var(--border); }
       .thumb { background: #ff48b0; border-bottom: 2px solid var(--border); }
       .card img { filter: grayscale(1) contrast(1.15); mix-blend-mode: multiply; }
-      a.card:hover img { filter: none; mix-blend-mode: normal; }
       .title { text-shadow: 1.5px 1.5px 0 #3d9bff; }
-      a.card:hover { transform: translate(-3px, -3px); }
       #back { border-radius: 0; border: 2px solid var(--border) !important; }
 
       /* covers the demo pane until the demo's canvas is up, so its white loading page never shows */
@@ -89,14 +83,39 @@
       body.demo #frame { display: block; }
       body:not(.demo) #demo-only { display: none; }
 
-      @media (max-width: 800px) {
-        body { display: block; }
-        aside { height: auto; border-right: 0 !important; border-bottom: 1px solid var(--border); padding: 1.75rem 1.25rem; }
-        main { height: auto; }
-        #frame { height: 80vh; }
-        #grid-view { padding: 1.5rem 1rem; }
+      /* hover effects only where a real pointer exists, so taps on phones and tablets don't leave them stuck */
+      @media (hover: hover) {
+        aside a:hover { opacity: .7; }
+        a.card:hover { transform: translateY(-4px); border-color: var(--card-hover-border); box-shadow: var(--card-hover-shadow); }
+        a.card:hover img { transform: scale(1.04); }
+        a.card:hover .meta::after { color: var(--accent); transform: translateX(4px); }
+        a.card:hover img { filter: none; mix-blend-mode: normal; }
+        a.card:hover { transform: translate(-3px, -3px); }
       }
-      @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+      /* phones and small tablets: the sidebar becomes a top bar that scrolls on its own, the demo fills the rest */
+      @media (max-width: 800px) {
+        body { flex-direction: column; height: 100vh; height: 100dvh; }
+        aside { flex: 0 0 auto; height: auto; max-height: 33.3vh; max-height: 33.3dvh; border-right: 0 !important; border-bottom: 2px solid var(--border); padding: 0 1.25rem 1rem; -webkit-overflow-scrolling: touch; }
+        #home-only { padding-top: 1rem; }
+        aside h1 { font-size: 1.35rem; margin-bottom: .5rem; }
+        aside h2 { margin: 1rem 0 .4rem; }
+        aside p, aside ul { font-size: .88rem; }
+        /* back arrow and the demo's title share one line */
+        .demo-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: .75rem; margin: 0 -1.25rem .5rem; padding: .75rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+        #back { margin: 0; padding: .3rem .7rem; flex: 0 0 auto; }
+        .back-label { display: none; }
+        #demo-title { margin: 0; }
+        #demo-img { max-width: 200px; }
+        #demo-note { margin-top: 1rem; }
+        main { flex: 1 1 0; height: auto; min-height: 0; }
+        #grid-view { padding: 1.25rem 1rem 2.5rem; }
+        .grid { gap: 1.1rem; }
+        .meta { padding: .8rem 1rem 1rem; }
+        .title { font-size: 1.05rem; }
+        #loader { font-size: 1.3rem; }
+      }
+      @media (max-width: 359px) { .grid { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -112,8 +131,10 @@
         <p>Pick a demo to try it.</p>
       </div>
       <div id="demo-only">
-        <a id="back" href="#">← All demos</a>
-        <h1 id="demo-title"></h1>
+        <div class="demo-head">
+          <a id="back" href="#" aria-label="All demos">←<span class="back-label"> All demos</span></a>
+          <h1 id="demo-title"></h1>
+        </div>
         <p id="demo-desc"></p>
         <h2>How to interact</h2>
         <ul id="demo-how"></ul>

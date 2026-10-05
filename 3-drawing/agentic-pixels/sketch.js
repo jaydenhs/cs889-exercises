@@ -32,13 +32,9 @@ let sourceImage;
 function preload() {
   imagePaths = ["bird.jpg", "nemo.jpg", "parrot.jpg", "frog.jpg"];
   sourceImages = imagePaths.map((path) =>
-    loadImage(`animals/${path}`, handleImage, handleError)
+    loadImage(`animals/${path}`, undefined, handleError)
   );
   source;
-}
-
-function handleImage(img) {
-  console.log("Loaded image", img);
 }
 
 // Log the error.

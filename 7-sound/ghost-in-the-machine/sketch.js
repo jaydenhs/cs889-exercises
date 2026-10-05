@@ -23,6 +23,36 @@ let video;
 // scales the whole mix back.
 const MASTER_VOLUME = 0.1;
 
+function isMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+}
+
+// keypoints come back in the camera's own pixel size, which rarely matches the
+// canvas, so scale them uniformly (no stretching) until the camera view covers
+// the canvas, centred. Anything cropped off-screen just clamps to the edge.
+function toCanvas(kp) {
+  const vw = video.elt.videoWidth || 640;
+  const vh = video.elt.videoHeight || 480;
+  const s = max(width / vw, height / vh);
+  return { x: kp.x * s + (width - vw * s) / 2, y: kp.y * s + (height - vh * s) / 2 };
+}
+
+// where the hand "is": the average of its keypoints that are on screen, so a
+// wrist cropped off the bottom doesn't silence a hand that's clearly in view
+function handCentre(hand) {
+  const pts = hand.keypoints.map(toCanvas).filter((p) => p.x >= 0 && p.x <= width && p.y >= 0 && p.y <= height);
+  if (pts.length === 0) return toCanvas(hand.keypoints[0]);
+  return {
+    x: pts.reduce((sum, p) => sum + p.x, 0) / pts.length,
+    y: pts.reduce((sum, p) => sum + p.y, 0) / pts.length,
+  };
+}
+
+// text and stroke sizes that shrink on small screens
+function textPx() {
+  return min(96, width / 9.5);
+}
+
 function preload() {
   // initialize the model
   model = ml5.handPose(
@@ -30,11 +60,8 @@ function preload() {
     {
       flipped: true, // mirror the predictions to match video
       maxHands: 2,
-      modelType: "full",
-    },
-    // callback when loaded
-    () => {
-      console.log("🚀 model loaded");
+      // the lighter model keeps up better on phones
+      modelType: isMobile() ? "lite" : "full",
     }
   );
 }
@@ -47,7 +74,6 @@ function setup() {
   // create an HTML video capture object
   // (flipped means the video is mirrored)
   video = createCapture(VIDEO, { flipped: true });
-  video.size(width, height);
   // Hide the video element, and just show the canvas
   video.hide();
 
@@ -56,7 +82,6 @@ function setup() {
 
   // set the detection callback
   model.detectStart(video, (results) => {
-    // console.log(`✋ ${results.length} hands detected`);
     predictions = results;
   });
 }
@@ -71,9 +96,9 @@ function draw() {
       fill(0, 255, 0, 60);
       textFont("monospace");
       noStroke();
-      textSize(96);
+      textSize(textPx());
       textAlign(CENTER, CENTER);
-      text("0".repeat(14), width / 2, height / 2 + (side === "Left" ? -48 : 48));
+      text("0".repeat(14), width / 2, height / 2 + (side === "Left" ? -1 : 1) * textPx() * 0.5);
     }
   });
 
@@ -84,12 +109,15 @@ function draw() {
 
   // debug info
   // drawFps();
+
+  drawTapHint();
 }
 
 // Draw lines between certain main keypoints
 function drawSkeleton(hand, i) {
+  const thick = constrain(min(width, height) / 16, 12, 50);
   stroke(255, 20);
-  strokeWeight(50);
+  strokeWeight(thick);
   noFill();
 
   // get lookup table for connections
@@ -97,18 +125,18 @@ function drawSkeleton(hand, i) {
 
   connections.forEach((c) => {
     const [i, j] = c;
-    const a = hand.keypoints[i];
-    const b = hand.keypoints[j];
+    const a = toCanvas(hand.keypoints[i]);
+    const b = toCanvas(hand.keypoints[j]);
     line(a.x, a.y, b.x, b.y);
   });
 
   stroke(255, 100);
-  strokeWeight(20);
+  strokeWeight(thick * 0.4);
 
   connections.forEach((c) => {
     const [i, j] = c;
-    const a = hand.keypoints[i];
-    const b = hand.keypoints[j];
+    const a = toCanvas(hand.keypoints[i]);
+    const b = toCanvas(hand.keypoints[j]);
     line(a.x, a.y, b.x, b.y);
   });
 
@@ -117,31 +145,30 @@ function drawSkeleton(hand, i) {
   osc.start();
 
   // map the x position of the hand to a frequency
-  let freq = map(hand.keypoints[0].x, 0, width, 200, 1000, true);
+  const pos = handCentre(hand);
+  let freq = map(pos.x, 0, width, 200, 1000, true);
   osc.freq(freq);
 
   // map the y position of the hand to an amplitude
-  let amp = map(hand.keypoints[0].y, height, 0, 0, 1, true);
+  let amp = map(pos.y, height, 0, 0, 1, true);
   osc.amp(amp);
 
   // display the binary value of the amplitude
   if (hand.handedness === "Left") {
-    offset = -48;
+    offset = -textPx() * 0.5;
   } else {
-    offset = 48;
+    offset = textPx() * 0.5;
   }
   let ampBinary = amp.toString(2).slice(2, 16);
   fill("lime");
   textFont("monospace");
   noStroke();
-  textSize(96);
+  textSize(textPx());
   textAlign(CENTER, CENTER);
   text(ampBinary, width / 2, height / 2 + offset);
 
   // stop the oscillator after 300 ms
   let duration = map(hand.keypoints3D[0].z, -0.015, 0.02, 700, 10, true);
-  print(hand.keypoints3D[0].z);
-  // print(duration);
   setTimeout(() => {
     osc.stop();
   }, duration);
@@ -163,3 +190,30 @@ function drawSkeleton(hand, i) {
 
 // global callback from the settings GUI
 function paramChanged(name) {}
+
+// browsers keep audio locked until the first tap or click
+function audioLocked() {
+  return getAudioContext().state !== "running";
+}
+
+function drawTapHint() {
+  if (!audioLocked()) return;
+  fill(255, 150);
+  noStroke();
+  textFont("sans-serif");
+  textSize(constrain(width / 22, 14, 22));
+  textAlign(CENTER, BOTTOM);
+  text("tap to enable sound", width / 2, height - 24);
+}
+
+function mousePressed() {
+  userStartAudio();
+}
+
+function touchEnded() {
+  userStartAudio();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}

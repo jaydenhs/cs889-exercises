@@ -9,9 +9,19 @@ let p = {
   strokeWidthMax: 40,
 };
 
-// size of the video the model sees; hand keypoints are in these coordinates
-const VIDEO_W = 640;
-const VIDEO_H = 480;
+// hand keypoints are in the camera's own pixel size, which differs between
+// devices (and between portrait and landscape phones), so read it from the video
+let lineScale = 1; // keeps stroke widths the same relative to the camera frame
+function videoSize() {
+  return {
+    w: video.elt.videoWidth || 640,
+    h: video.elt.videoHeight || 480,
+  };
+}
+
+function isMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+}
 
 // the HandPose model
 // using https://docs.ml5js.org/#/reference/handpose
@@ -40,6 +50,8 @@ const handLostFrameLimit = 45; // about 0.75s at 60 fps
 const fadeDuration = 1.5; // seconds
 let handLostFrames = 0;
 let fadedOut = false;
+let soundUnlocked = false; // true once the browser has let us play
+let soundProbed = false; // true once we know whether it will
 
 // Audio
 let symphony;
@@ -58,11 +70,8 @@ function preload() {
     {
       flipped: true, // mirror the predictions to match video
       maxHands: 2,
-      modelType: "full",
-    },
-    // callback when loaded
-    () => {
-      console.log("🚀 model loaded");
+      // the lighter model keeps up better on phones
+      modelType: isMobile() ? "lite" : "full",
     }
   );
   // Create an audio element
@@ -75,10 +84,10 @@ function preload() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  probeSound();
 
   // create an HTML video capture object
   video = createCapture(VIDEO, { flipped: true });
-  video.size(VIDEO_W, VIDEO_H);
   video.hide();
 
   model.detectStart(video, (results) => {
@@ -92,9 +101,11 @@ function draw() {
 
   {
     // fit the video space into the window, centred, so hands are never cropped
-    const s = min(width / VIDEO_W, height / VIDEO_H);
+    const { w: vw, h: vh } = videoSize();
+    const s = min(width / vw, height / vh);
+    lineScale = vh / 480;
     push();
-    translate((width - VIDEO_W * s) / 2, (height - VIDEO_H * s) / 2);
+    translate((width - vw * s) / 2, (height - vh * s) / 2);
     scale(s);
     // draw different parts of the prediction
     predictions.forEach((hand, i) => {
@@ -110,7 +121,6 @@ function draw() {
 
     if (pBeat !== beat) {
       calculateBPM();
-      print(beat);
       pBeat = beat;
       previousBPMs.shift();
       previousBPMs.push(constrain(bpm, originalBPM * minRate, originalBPM * maxRate));
@@ -124,13 +134,15 @@ function draw() {
 
     pop();
   }
+
+  drawTapHint();
 }
 
 // Draw lines between certain main keypoints
 function drawSkeleton(hand, i) {
   const c = "gray";
   stroke(c);
-  strokeWeight(p.strokeWidth);
+  strokeWeight(p.strokeWidth * lineScale);
   noFill();
 
   // get lookup table for connections
@@ -147,7 +159,7 @@ function drawSkeleton(hand, i) {
 function drawIndexFingerSkeleton(hand, i) {
   const c = "white";
   stroke(c);
-  strokeWeight(15);
+  strokeWeight(15 * lineScale);
   noFill();
 
   const indexFingerConnections = [
@@ -252,6 +264,7 @@ function startAudio() {
       .then(() => {
         frameCount = 0;
         audio.playing = true;
+        soundUnlocked = true;
       })
       .catch(() => {});
   }
@@ -265,7 +278,6 @@ function calculateBPM() {
     bpm = 60 / (framesSinceLastBeat / 60);
   }
 
-  print(currentFrame);
 
   lastBeatFrame = currentFrame;
 }
@@ -273,8 +285,47 @@ function calculateBPM() {
 // a click unlocks audio if the browser blocked autoplay, without starting the music
 function mousePressed() {
   if (!audio.playing) {
-    audio.play().then(() => audio.pause()).catch(() => {});
+    audio
+      .play()
+      .then(() => {
+        audio.pause();
+        soundUnlocked = true;
+      })
+      .catch(() => {});
   }
+}
+
+// browsers keep audio locked until the first tap or click. The only reliable test is to
+// try playing; at volume 0 the attempt is silent, and it is rejected if audio is locked.
+function probeSound() {
+  audio.volume = 0;
+  audio
+    .play()
+    .then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      soundUnlocked = true;
+    })
+    .catch(() => {})
+    .finally(() => {
+      audio.volume = 1;
+      soundProbed = true;
+    });
+}
+
+function soundLocked() {
+  return soundProbed && !soundUnlocked;
+}
+
+function drawTapHint() {
+  if (!soundLocked()) return;
+  fill(255);
+  stroke(0, 160);
+  strokeWeight(4);
+  textFont("sans-serif");
+  textSize(constrain(width / 22, 14, 22));
+  textAlign(CENTER, BOTTOM);
+  text("tap to enable sound", width / 2, height - 24);
 }
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);

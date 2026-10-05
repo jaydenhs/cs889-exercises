@@ -20,7 +20,6 @@ function createSettingsGui(params, { load, callback }) {
   _savedParams = getItem("params");
 
   if (load && _savedParams) {
-    print(_savedParams);
 
     for (const key in _savedParams) {
       params[key] = _savedParams[key];
@@ -44,12 +43,10 @@ function createSettingsGui(params, { load, callback }) {
 
   if (callback) _paramGui.prototype.setGlobalChangeHandler(callback);
 
-  // settingsGui.prototype.addRange('size', 1, 64, 32, 1, function(v) { print("size changed", v) } )
 
   _paramGui.setPosition(width + 10, 10);
   // the 'H' key hides or shows the GUI
   _paramGui.prototype.setKey("H");
-  console.log(` 'H' to hide/show settings GUI`);
 
   return _paramGui;
 }

@@ -89,8 +89,6 @@ function handleFile(file) {
     activeImg = loadImage(file.data, () => {
       describeImageOllama(file.data);
     });
-  } else {
-    print("Not an image file!");
   }
 }
 
@@ -114,7 +112,6 @@ function describeImageOllama(imageData) {
   })
     .then((response) => response.json())
     .then((data) => {
-      // print(data.response);
       caption = data.response;
       caption = caption.replace(/"/g, "");
       caption = caption.toUpperCase();

@@ -27,6 +27,15 @@ html {
 }
 
 #placard h3 {
+    font-size: 15px;
+  }
+  /* phones: just the artist's name (JS sets an inline display, hence !important) */
+  #placard p {
+    display: none !important;
+  }
+}
+
+#placard h3 {
   margin: 0 0 4px 0;
   font-size: 10px;
   color: #333;
@@ -68,3 +77,12 @@ html {
   font-size: 16px;
   color: #555;
 }
+
+/* phones: larger, readable text and a placard that fits the width */
+@media (max-width: 599px) {
+  #placard {
+    width: min(320px, calc(100vw - 40px));
+    box-sizing: border-box;
+    padding: 14px 18px;
+  }
+  
